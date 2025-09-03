@@ -7,7 +7,6 @@ import StatsGrid from "@/components/dashboard/stats-grid";
 import RecentCourses from "@/components/dashboard/recent-courses";
 import AiRecommendations from "@/components/dashboard/ai-recommendations";
 import UpcomingAssignments from "@/components/dashboard/upcoming-assignments";
-import AiChatPanel from "@/components/chat/ai-chat-panel";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -80,8 +79,6 @@ export default function Dashboard() {
             <UpcomingAssignments />
           </div>
         </main>
-        
-        <AiChatPanel />
       </div>
     </div>
   );

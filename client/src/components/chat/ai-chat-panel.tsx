@@ -90,21 +90,20 @@ export default function AiChatPanel() {
 
   if (isMinimized) {
     return (
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsMinimized(false)}
-          className="bg-secondary text-secondary-foreground rounded-lg px-4 py-3 flex items-center space-x-2 hover:bg-secondary/90 transition-colors shadow-lg"
+          className="bg-primary text-primary-foreground rounded-full w-14 h-14 flex items-center justify-center hover:bg-primary/90 transition-all duration-200 shadow-lg hover:shadow-xl"
           data-testid="button-expand-chat"
         >
-          <Brain className="w-4 h-4" />
-          <span className="font-medium">Chat with AI</span>
+          <Brain className="w-6 h-6" />
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="w-80 bg-card border-l border-border flex flex-col" data-testid="ai-chat-panel">
+    <div className="fixed bottom-6 right-6 z-50 w-80 h-96 bg-card border border-border rounded-lg shadow-xl flex flex-col" data-testid="ai-chat-panel">
       {/* Chat Header */}
       <CardHeader className="p-4 border-b border-border">
         <div className="flex items-center justify-between">

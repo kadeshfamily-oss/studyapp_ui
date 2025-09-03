@@ -3,7 +3,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
-import AiChatPanel from "@/components/chat/ai-chat-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Brain, MessageSquare, HelpCircle, BookOpen, Calculator, Atom } from "lucide-react";
@@ -184,8 +183,6 @@ export default function AITutor() {
             </Card>
           </div>
         </main>
-        
-        <AiChatPanel />
       </div>
     </div>
   );

@@ -12,7 +12,6 @@ import {
   Calendar,
   Folder,
   Settings,
-  MessageSquare
 } from "lucide-react";
 
 interface SidebarProps {
@@ -118,17 +117,6 @@ export default function Sidebar({ activeRoute }: SidebarProps) {
           </div>
         </div>
       </nav>
-      
-      {/* AI Chat Quick Access */}
-      <div className="absolute bottom-4 left-4 right-4">
-        <Button 
-          className="w-full bg-secondary text-secondary-foreground rounded-lg px-4 py-3 flex items-center space-x-2 hover:bg-secondary/90 transition-colors shadow-sm"
-          data-testid="button-chat-ai"
-        >
-          <MessageSquare className="w-4 h-4" />
-          <span className="font-medium">Chat with AI</span>
-        </Button>
-      </div>
     </aside>
   );
 }
