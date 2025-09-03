@@ -7,6 +7,8 @@ import {
   chatMessages,
   aiRecommendations,
   studySessions,
+  courseDocuments,
+  documentChunks,
   type User,
   type UpsertUser,
   type Course,
@@ -21,6 +23,10 @@ import {
   type AiRecommendation,
   type InsertAiRecommendation,
   type StudySession,
+  type CourseDocument,
+  type InsertCourseDocument,
+  type DocumentChunk,
+  type InsertDocumentChunk,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -66,6 +72,17 @@ export interface IStorage {
     studyStreak: number;
     aiInteractions: number;
   }>;
+
+  // Document operations
+  getCourseDocuments(courseId: string): Promise<CourseDocument[]>;
+  createCourseDocument(document: InsertCourseDocument): Promise<CourseDocument>;
+  updateCourseDocument(id: string, document: Partial<InsertCourseDocument>): Promise<CourseDocument>;
+  deleteCourseDocument(id: string): Promise<void>;
+  
+  // Document chunk operations
+  createDocumentChunk(chunk: InsertDocumentChunk): Promise<DocumentChunk>;
+  getCourseDocumentChunks(courseId: string): Promise<Array<DocumentChunk & { document: CourseDocument | null }>>;
+  searchDocumentChunks(query: string, courseId: string): Promise<DocumentChunk[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -310,6 +327,62 @@ export class DatabaseStorage implements IStorage {
       studyStreak: studyStreakResult.count,
       aiInteractions: aiInteractionsResult.count,
     };
+  }
+
+  // Document operations
+  async getCourseDocuments(courseId: string): Promise<CourseDocument[]> {
+    return await db.select().from(courseDocuments).where(eq(courseDocuments.courseId, courseId));
+  }
+
+  async createCourseDocument(document: InsertCourseDocument): Promise<CourseDocument> {
+    const [newDocument] = await db.insert(courseDocuments).values(document).returning();
+    return newDocument;
+  }
+
+  async updateCourseDocument(id: string, document: Partial<InsertCourseDocument>): Promise<CourseDocument> {
+    const [updatedDocument] = await db
+      .update(courseDocuments)
+      .set(document)
+      .where(eq(courseDocuments.id, id))
+      .returning();
+    return updatedDocument;
+  }
+
+  async deleteCourseDocument(id: string): Promise<void> {
+    await db.delete(courseDocuments).where(eq(courseDocuments.id, id));
+  }
+
+  // Document chunk operations
+  async createDocumentChunk(chunk: InsertDocumentChunk): Promise<DocumentChunk> {
+    const [newChunk] = await db.insert(documentChunks).values(chunk).returning();
+    return newChunk;
+  }
+
+  async getCourseDocumentChunks(courseId: string): Promise<Array<DocumentChunk & { document: CourseDocument | null }>> {
+    const result = await db
+      .select({
+        id: documentChunks.id,
+        documentId: documentChunks.documentId,
+        chunkIndex: documentChunks.chunkIndex,
+        content: documentChunks.content,
+        embedding: documentChunks.embedding,
+        metadata: documentChunks.metadata,
+        createdAt: documentChunks.createdAt,
+        document: courseDocuments
+      })
+      .from(documentChunks)
+      .leftJoin(courseDocuments, eq(documentChunks.documentId, courseDocuments.id))
+      .where(eq(courseDocuments.courseId, courseId));
+    
+    return result;
+  }
+
+  async searchDocumentChunks(query: string, courseId: string): Promise<DocumentChunk[]> {
+    // This is a simple text-based search. In a real implementation, you might use vector similarity
+    const chunks = await this.getCourseDocumentChunks(courseId);
+    return chunks.filter(chunk => 
+      chunk.content.toLowerCase().includes(query.toLowerCase())
+    );
   }
 }
 

@@ -7,14 +7,16 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Send, Brain, Minus, User } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Send, Brain, Minus, User, FileText } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { ChatMessage } from "@shared/schema";
+import type { ChatMessage, Course } from "@shared/schema";
 
 export default function AiChatPanel() {
   const [message, setMessage] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -25,10 +27,24 @@ export default function AiChatPanel() {
     refetchInterval: false,
   });
 
+  // Fetch user courses for RAG context
+  const { data: courses = [] } = useQuery<Course[]>({
+    queryKey: ["/api/courses"],
+  });
+
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      const response = await apiRequest("POST", "/api/chat/message", { content });
-      return response.json();
+      // Use RAG if a course is selected and contains documents
+      if (selectedCourse) {
+        const response = await apiRequest("POST", "/api/chat/rag", { 
+          message: content,
+          courseId: selectedCourse 
+        });
+        return response.json();
+      } else {
+        const response = await apiRequest("POST", "/api/chat/message", { content });
+        return response.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
@@ -150,7 +166,7 @@ export default function AiChatPanel() {
                 <div className="bg-muted rounded-lg px-3 py-2 max-w-[80%]">
                   <p className="text-sm text-foreground">
                     Hello! I'm your AI learning assistant. I can help you with coursework, explain concepts, 
-                    generate practice questions, and much more. What would you like to work on today?
+                    generate practice questions, and much more. Select a course below to get answers based on your course materials!
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Just now</p>
                 </div>
@@ -167,7 +183,7 @@ export default function AiChatPanel() {
                     <div className="bg-muted rounded-lg px-3 py-2 max-w-[80%]">
                       <p className="text-sm text-foreground whitespace-pre-wrap">{msg.content}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatTime(msg.createdAt)}
+                        {msg.createdAt ? formatTime(msg.createdAt) : 'Now'}
                       </p>
                     </div>
                   </div>
@@ -176,7 +192,7 @@ export default function AiChatPanel() {
                     <div className="bg-primary rounded-lg px-3 py-2 max-w-[80%]">
                       <p className="text-sm text-primary-foreground whitespace-pre-wrap">{msg.content}</p>
                       <p className="text-xs text-primary-foreground/70 mt-1">
-                        {formatTime(msg.createdAt)}
+                        {msg.createdAt ? formatTime(msg.createdAt) : 'Now'}
                       </p>
                     </div>
                     <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
@@ -215,11 +231,40 @@ export default function AiChatPanel() {
       {/* Chat Input */}
       <CardContent className="p-4 border-t border-border">
         <form onSubmit={handleSendMessage} className="space-y-3">
+          {/* Course Selection for RAG */}
+          {courses.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Ask about course materials:</label>
+              <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                <SelectTrigger className="w-full h-8 text-sm">
+                  <SelectValue placeholder="Select course for context..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" data-testid="select-no-course">General questions</SelectItem>
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id} data-testid={`select-course-${course.id}`}>
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-3 h-3" />
+                        <span>{course.title}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedCourse && (
+                <p className="text-xs text-muted-foreground">
+                  <FileText className="w-3 h-3 inline mr-1" />
+                  Answers will be based on course materials
+                </p>
+              )}
+            </div>
+          )}
+          
           <div className="flex space-x-2">
             <Input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Ask me anything about your courses..."
+              placeholder={selectedCourse ? "Ask about course materials..." : "Ask me anything about your courses..."}
               className="flex-1 bg-muted border border-input text-sm"
               disabled={sendMessageMutation.isPending}
               data-testid="input-chat-message"
@@ -228,7 +273,7 @@ export default function AiChatPanel() {
               type="submit"
               size="icon"
               disabled={!message.trim() || sendMessageMutation.isPending}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className={selectedCourse ? "bg-accent text-accent-foreground hover:bg-accent/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}
               data-testid="button-send-message"
             >
               <Send className="w-4 h-4" />
@@ -237,30 +282,62 @@ export default function AiChatPanel() {
           
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-2">
-            <Badge 
-              variant="secondary"
-              className="cursor-pointer hover:bg-secondary/80 transition-colors"
-              onClick={() => handleQuickAction("Can you explain this concept to me?")}
-              data-testid="button-quick-explain"
-            >
-              Explain concept
-            </Badge>
-            <Badge 
-              variant="secondary"
-              className="cursor-pointer hover:bg-secondary/80 transition-colors"
-              onClick={() => handleQuickAction("Can you create a practice quiz for me?")}
-              data-testid="button-quick-quiz"
-            >
-              Practice quiz
-            </Badge>
-            <Badge 
-              variant="secondary"
-              className="cursor-pointer hover:bg-secondary/80 transition-colors"
-              onClick={() => handleQuickAction("Can you help me create a study plan?")}
-              data-testid="button-quick-study-plan"
-            >
-              Study plan
-            </Badge>
+            {selectedCourse ? (
+              <>
+                <Badge 
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                  onClick={() => handleQuickAction("Summarize the key concepts from the course materials")}
+                  data-testid="button-quick-summarize"
+                >
+                  <FileText className="w-3 h-3 mr-1" />
+                  Summarize materials
+                </Badge>
+                <Badge 
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                  onClick={() => handleQuickAction("Generate practice questions from the course content")}
+                  data-testid="button-quick-practice"
+                >
+                  Practice questions
+                </Badge>
+                <Badge 
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                  onClick={() => handleQuickAction("What are the most important topics to review?")}
+                  data-testid="button-quick-review"
+                >
+                  Study guide
+                </Badge>
+              </>
+            ) : (
+              <>
+                <Badge 
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                  onClick={() => handleQuickAction("Can you explain this concept to me?")}
+                  data-testid="button-quick-explain"
+                >
+                  Explain concept
+                </Badge>
+                <Badge 
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                  onClick={() => handleQuickAction("Can you create a practice quiz for me?")}
+                  data-testid="button-quick-quiz"
+                >
+                  Practice quiz
+                </Badge>
+                <Badge 
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                  onClick={() => handleQuickAction("Can you help me create a study plan?")}
+                  data-testid="button-quick-study-plan"
+                >
+                  Study plan
+                </Badge>
+              </>
+            )}
           </div>
         </form>
       </CardContent>

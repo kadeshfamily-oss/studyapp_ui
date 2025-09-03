@@ -7,8 +7,10 @@ import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Users, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BookOpen, Users, Clock, FileText, Brain } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import CourseDocuments from "@/components/course/course-documents";
 import type { Course } from "@shared/schema";
 
 export default function Courses() {
@@ -81,68 +83,111 @@ export default function Courses() {
             </div>
 
             {courses && courses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {courses.map((course) => (
-                  <Card key={course.id} className="card-hover border-border" data-testid={`card-course-${course.id}`}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <BookOpen className="w-6 h-6 text-primary" />
-                        </div>
-                        <span className="text-xs bg-accent/10 text-accent px-2 py-1 rounded-full">
-                          Active
-                        </span>
-                      </div>
-                      <CardTitle className="text-lg" data-testid={`text-course-title-${course.id}`}>
-                        {course.title}
-                      </CardTitle>
-                      {course.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {course.description}
-                        </p>
-                      )}
-                    </CardHeader>
-                    
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex items-center justify-between text-sm mb-2">
-                            <span className="text-muted-foreground">Progress</span>
-                            <span className="font-medium" data-testid={`text-progress-${course.id}`}>
-                              {course.progress}%
+              <Tabs defaultValue="overview" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="overview" data-testid="tab-overview">
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Course Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="materials" data-testid="tab-materials">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Course Materials
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="overview">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {courses.map((course) => (
+                      <Card key={course.id} className="card-hover border-border" data-testid={`card-course-${course.id}`}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                              <BookOpen className="w-6 h-6 text-primary" />
+                            </div>
+                            <span className="text-xs bg-accent/10 text-accent px-2 py-1 rounded-full">
+                              Active
                             </span>
                           </div>
-                          <Progress 
-                            value={parseFloat(course.progress)} 
-                            className="h-2"
-                            data-testid={`progress-bar-${course.id}`}
-                          />
-                        </div>
+                          <CardTitle className="text-lg" data-testid={`text-course-title-${course.id}`}>
+                            {course.title}
+                          </CardTitle>
+                          {course.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {course.description}
+                            </p>
+                          )}
+                        </CardHeader>
                         
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center space-x-1">
-                            <Users className="w-3 h-3" />
-                            <span>Enrolled</span>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex items-center justify-between text-sm mb-2">
+                                <span className="text-muted-foreground">Progress</span>
+                                <span className="font-medium" data-testid={`text-progress-${course.id}`}>
+                                  {course.progress}%
+                                </span>
+                              </div>
+                              <Progress 
+                                value={parseFloat(course.progress)} 
+                                className="h-2"
+                                data-testid={`progress-bar-${course.id}`}
+                              />
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <div className="flex items-center space-x-1">
+                                <Users className="w-3 h-3" />
+                                <span>Enrolled</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Clock className="w-3 h-3" />
+                                <span>Active</span>
+                              </div>
+                            </div>
+                            
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full mt-4"
+                              data-testid={`button-continue-${course.id}`}
+                            >
+                              Continue Learning
+                            </Button>
                           </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3" />
-                            <span>Active</span>
-                          </div>
-                        </div>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full mt-4"
-                          data-testid={`button-continue-${course.id}`}
-                        >
-                          Continue Learning
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="materials">
+                  {courses.length === 1 ? (
+                    <CourseDocuments 
+                      courseId={courses[0].id} 
+                      courseName={courses[0].title} 
+                    />
+                  ) : (
+                    <div className="space-y-6">
+                      {courses.map((course) => (
+                        <Card key={course.id} className="border-border">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center">
+                              <Brain className="w-5 h-5 mr-2 text-primary" />
+                              {course.title} - Materials
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <CourseDocuments 
+                              courseId={course.id} 
+                              courseName={course.title} 
+                            />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             ) : (
               <Card className="border-border">
                 <CardContent className="p-12 text-center">

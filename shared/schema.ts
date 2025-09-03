@@ -120,6 +120,30 @@ export const studySessions = pgTable("study_sessions", {
   endedAt: timestamp("ended_at"),
 });
 
+// Course documents for RAG
+export const courseDocuments = pgTable("course_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  courseId: varchar("course_id").notNull(),
+  fileName: varchar("file_name").notNull(),
+  filePath: varchar("file_path").notNull(),
+  fileType: varchar("file_type").notNull().default("pdf"),
+  fileSize: integer("file_size").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  isProcessed: boolean("is_processed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Document chunks for vector search
+export const documentChunks = pgTable("document_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  embedding: text("embedding"), // JSON string of vector embeddings
+  metadata: jsonb("metadata"), // Additional metadata about the chunk
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   enrollments: many(enrollments),
@@ -130,17 +154,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   instructedCourses: many(courses, { relationName: "instructor" }),
 }));
 
-export const coursesRelations = relations(courses, ({ one, many }) => ({
-  instructor: one(users, {
-    fields: [courses.instructorId],
-    references: [users.id],
-    relationName: "instructor",
-  }),
-  enrollments: many(enrollments),
-  assignments: many(assignments),
-  chatMessages: many(chatMessages),
-  studySessions: many(studySessions),
-}));
 
 export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
   user: one(users, {
@@ -201,6 +214,38 @@ export const studySessionsRelations = relations(studySessions, ({ one }) => ({
   }),
 }));
 
+export const courseDocumentsRelations = relations(courseDocuments, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [courseDocuments.courseId],
+    references: [courses.id],
+  }),
+  uploader: one(users, {
+    fields: [courseDocuments.uploadedBy],
+    references: [users.id],
+  }),
+  chunks: many(documentChunks),
+}));
+
+export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
+  document: one(courseDocuments, {
+    fields: [documentChunks.documentId],
+    references: [courseDocuments.id],
+  }),
+}));
+
+export const coursesRelations = relations(courses, ({ one, many }) => ({
+  instructor: one(users, {
+    fields: [courses.instructorId],
+    references: [users.id],
+    relationName: "instructor",
+  }),
+  enrollments: many(enrollments),
+  assignments: many(assignments),
+  chatMessages: many(chatMessages),
+  studySessions: many(studySessions),
+  documents: many(courseDocuments),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -236,6 +281,16 @@ export const insertAiRecommendationSchema = createInsertSchema(aiRecommendations
   createdAt: true,
 });
 
+export const insertCourseDocumentSchema = createInsertSchema(courseDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDocumentChunkSchema = createInsertSchema(documentChunks).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -251,3 +306,7 @@ export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type AiRecommendation = typeof aiRecommendations.$inferSelect;
 export type InsertAiRecommendation = z.infer<typeof insertAiRecommendationSchema>;
 export type StudySession = typeof studySessions.$inferSelect;
+export type CourseDocument = typeof courseDocuments.$inferSelect;
+export type InsertCourseDocument = z.infer<typeof insertCourseDocumentSchema>;
+export type DocumentChunk = typeof documentChunks.$inferSelect;
+export type InsertDocumentChunk = z.infer<typeof insertDocumentChunkSchema>;
